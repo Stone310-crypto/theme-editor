@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theme Editor</title>
+<style>
+:root{--bg:#0f1117;--panel:#1a1c26;--border:rgba(255,255,255,0.08);--text:#e8e4df;--text2:#b8b4ae;--muted:#6e6b65;--acc:#d4a853;--acc-bg:rgba(212,168,83,0.1);--green:#5a9e6f;--red:#d95b5b;--input-bg:#2f3342;--radius:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:16px;line-height:1.5;font-size:13px}
+h1{font-size:18px;font-weight:700;margin-bottom:2px}
+h2{font-size:14px;font-weight:600;margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.sub{color:var(--text2);font-size:11px;margin-bottom:14px}
+
+.actions{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.btn{padding:6px 14px;border-radius:var(--radius);border:none;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .12s}
+.btn-primary{background:var(--acc);color:#000}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:var(--border);color:var(--text)}
+.btn-secondary:hover{background:rgba(255,255,255,0.12)}
+.btn-green{background:var(--green);color:#fff}
+.btn-outline{border:1px solid var(--border);background:transparent;color:var(--text)}
+
+.section{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden}
+.section-header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--panel);cursor:pointer;user-select:none;font-weight:600;font-size:12px;transition:background .1s}
+.section-header:hover{background:rgba(255,255,255,0.03)}
+.section-body{padding:0 12px 10px;display:none}
+.section.open .section-body{display:block}
+.section .arrow{transition:transform .15s;font-size:10px;color:var(--muted)}
+.section.open .arrow{transform:rotate(90deg)}
+
+.var-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.var-row:last-child{border:none}
+.var-label{width:160px;font-size:11px;color:var(--text2);font-family:monospace;flex-shrink:0}
+.var-desc{width:100px;font-size:10px;color:var(--muted);flex-shrink:0}
+.var-input{flex:1;padding:4px 8px;border-radius:4px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);font-size:12px;font-family:monospace;outline:none;min-width:80px}
+.var-input:focus{border-color:var(--acc)}
+.var-color{width:28px;height:28px;border-radius:4px;border:1px solid var(--border);cursor:pointer;padding:0;flex-shrink:0}
+.var-color::-webkit-color-swatch-wrapper{padding:0}
+.var-color::-webkit-color-swatch{border:none;border-radius:3px}
+.var-swatch{width:16px;height:16px;border-radius:3px;border:1px solid var(--border);flex-shrink:0}
+
+.preview-bar{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;z-index:99}
+.preview-bar .status{font-size:11px;color:var(--text2)}
+.preview-bar .changed{color:var(--acc);font-weight:600}
+
+.css-output{width:100%;min-height:200px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-family:monospace;font-size:11px;color:var(--text);resize:vertical;outline:none;margin-top:8px}
+</style>
+</head>
+<body>
+
+<h1>🎨 Theme Editor</h1>
+<p class="sub">CSS-Variablen anpassen — Live-Vorschau im Dashboard</p>
+
+<div class="actions">
+  <button class="btn btn-outline" onclick="toggleAll(true)">📂 Alle ausklappen</button>
+  <button class="btn btn-outline" onclick="toggleAll(false)">📁 Alle einklappen</button>
+  <button class="btn btn-secondary" onclick="resetAll()">🔄 Zurücksetzen</button>
+  <span style="flex:1"></span>
+  <button class="btn btn-green" onclick="applyTheme()">✅ Übernehmen</button>
+  <button class="btn btn-primary" onclick="saveTheme()">💾 Speichern & Hochladen</button>
+</div>
+
+<div id="sections"></div>
+
+<h2 style="margin-top:20px">📝 Generiertes CSS</h2>
+<textarea class="css-output" id="css-output" readonly></textarea>
+
+<div class="preview-bar">
+  <span id="changed-count" class="status">Keine Änderungen</span>
+  <span style="flex:1"></span>
+  <button class="btn btn-primary" onclick="applyTheme()">✅ Übernehmen</button>
+  <button class="btn btn-green" onclick="saveTheme()">💾 Speichern & Hochladen</button>
+</div>
+
+<script>
+// ─── CSS-Variablen-Definition ─────────────────────────────────────────
+const VARIABLES = [
+  { section:'Layout', vars:[
+    {name:'--rail-w', def:'68px', desc:'Nav-Leiste Breite'},
+    {name:'--panel-w', def:'260px', desc:'Panel Breite'},
+  ]},
+  { section:'Hintergründe', vars:[
+    {name:'--bg-root', def:'#0f1117', desc:'Root', color:1},
+    {name:'--bg-rail', def:'#14161e', desc:'Nav-Leiste', color:1},
+    {name:'--bg-panel', def:'#1a1c26', desc:'Panel', color:1},
+    {name:'--bg-main', def:'#1e202a', desc:'Hauptbereich', color:1},
+    {name:'--bg-surface', def:'#242732', desc:'Surface', color:1},
+    {name:'--bg-surface-2', def:'#2a2e3a', desc:'Surface 2', color:1},
+    {name:'--bg-input', def:'#2f3342', desc:'Input-Felder', color:1},
+    {name:'--bg-hover', def:'rgba(255,255,255,0.04)', desc:'Hover', color:1},
+    {name:'--bg-active', def:'rgba(255,255,255,0.07)', desc:'Aktiv', color:1},
+  ]},
+  { section:'Rahmen', vars:[
+    {name:'--border-subtle', def:'rgba(255,255,255,0.05)', desc:'Subtle', color:1},
+    {name:'--border-default', def:'rgba(255,255,255,0.08)', desc:'Default', color:1},
+    {name:'--border-strong', def:'rgba(255,255,255,0.12)', desc:'Strong', color:1},
+    {name:'--border-focus', def:'rgba(212,168,83,0.4)', desc:'Focus', color:1},
+  ]},
+  { section:'Akzent (Gold)', vars:[
+    {name:'--accent', def:'#d4a853', desc:'Primär', color:1},
+    {name:'--accent-hover', def:'#e0b864', desc:'Hover', color:1},
+    {name:'--accent-dim', def:'#3a2e18', desc:'Dim', color:1},
+    {name:'--accent-bg', def:'rgba(212,168,83,0.1)', desc:'BG', color:1},
+    {name:'--accent-bg-hover', def:'rgba(212,168,83,0.18)', desc:'BG Hover', color:1},
+  ]},
+  { section:'Farben', vars:[
+    {name:'--green', def:'#5a9e6f', desc:'Erfolg', color:1},
+    {name:'--green-bg', def:'rgba(90,158,111,0.12)', desc:'Erfolg BG', color:1},
+    {name:'--red', def:'#d95b5b', desc:'Fehler', color:1},
+    {name:'--red-bg', def:'rgba(217,91,91,0.12)', desc:'Fehler BG', color:1},
+    {name:'--amber', def:'#e0a845', desc:'Warnung', color:1},
+    {name:'--amber-bg', def:'rgba(224,168,69,0.12)', desc:'Warnung BG', color:1},
+    {name:'--info', def:'#6b9cc4', desc:'Info', color:1},
+    {name:'--info-bg', def:'rgba(107,156,196,0.12)', desc:'Info BG', color:1},
+  ]},
+  { section:'Text', vars:[
+    {name:'--text-primary', def:'#e8e4df', desc:'Primär', color:1},
+    {name:'--text-secondary', def:'#b8b4ae', desc:'Sekundär', color:1},
+    {name:'--text-muted', def:'#6e6b65', desc:'Gedimmt', color:1},
+    {name:'--text-inverse', def:'#0f1117', desc:'Invers', color:1},
+  ]},
+];
+
+let changedVars = {};
+let themeName = 'Mein-Theme';
+
+// ─── UI Rendern ───────────────────────────────────────────────────────
+function buildUI() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+
+  VARIABLES.forEach((section, si) => {
+    const div = document.createElement('div');
+    div.className = 'section';
+    div.innerHTML = `
+      <div class="section-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="arrow">▶</span> ${section.section}
+      </div>
+      <div class="section-body"></div>`;
+
+    const body = div.querySelector('.section-body');
+    section.vars.forEach(v => {
+      const current = changedVars[v.name] !== undefined ? changedVars[v.name] : v.def;
+      const row = document.createElement('div');
+      row.className = 'var-row';
+      row.innerHTML = `
+        <span class="var-label">${v.name}</span>
+        <span class="var-desc">${v.desc}</span>
+        ${v.color ? `<div class="var-swatch" style="background:${current}"></div>` : ''}
+        ${v.color ? `<input type="color" class="var-color" value="${toHex(current)}" onchange="updateVar('${v.name}', this.value, this)">` : ''}
+        <input type="text" class="var-input" value="${current}" onchange="updateVar('${v.name}', this.value, this)" oninput="updateVar('${v.name}', this.value, this)" data-var="${v.name}">`;
+      body.appendChild(row);
+    });
+    container.appendChild(div);
+  });
+  updateCSSOutput();
+}
+
+function toHex(color) {
+  if (color.startsWith('#')) return color;
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return '#000000';
+  ctx.fillStyle = color;
+  return ctx.fillStyle;
+}
+
+function updateVar(name, value, el) {
+  const def = findDefault(name);
+  if (value === def) {
+    delete changedVars[name];
+    document.documentElement.style.removeProperty(name);
+  } else {
+    changedVars[name] = value;
+    document.documentElement.style.setProperty(name, value);
+  }
+
+  // Update swatch
+  const row = el.closest('.var-row');
+  if (row) {
+    const swatch = row.querySelector('.var-swatch');
+    if (swatch) swatch.style.background = value;
+    const colorInput = row.querySelector('.var-color');
+    if (colorInput && colorInput !== el) colorInput.value = toHex(value);
+    const textInput = row.querySelector('.var-input');
+    if (textInput && textInput !== el) textInput.value = value;
+  }
+
+  updateStatus();
+  updateCSSOutput();
+}
+
+function findDefault(name) {
+  for (const s of VARIABLES) {
+    for (const v of s.vars) {
+      if (v.name === name) return v.def;
+    }
+  }
+  return '';
+}
+
+function updateStatus() {
+  const count = Object.keys(changedVars).length;
+  const el = document.getElementById('changed-count');
+  if (count === 0) {
+    el.textContent = 'Keine Änderungen';
+    el.className = 'status';
+  } else {
+    el.textContent = `${count} Variable(n) geändert`;
+    el.className = 'status changed';
+  }
+}
+
+function updateCSSOutput() {
+  const lines = [':root {'];
+  for (const s of VARIABLES) {
+    lines.push(`  /* ${s.section} */`);
+    for (const v of s.vars) {
+      const val = changedVars[v.name] !== undefined ? changedVars[v.name] : v.def;
+      lines.push(`  ${v.name}: ${val};`);
+    }
+  }
+  lines.push('}');
+  document.getElementById('css-output').value = lines.join('\n');
+}
+
+function toggleAll(open) {
+  document.querySelectorAll('.section').forEach(s => {
+    if (open) s.classList.add('open'); else s.classList.remove('open');
+  });
+}
+
+function resetAll() {
+  changedVars = {};
+  for (const s of VARIABLES) {
+    for (const v of s.vars) {
+      document.documentElement.style.removeProperty(v.name);
+    }
+  }
+  buildUI();
+  updateStatus();
+}
+
+async function applyTheme() {
+  try {
+    const css = document.getElementById('css-output').value;
+    // Schreibe theme.css in die Extension
+    await invoke('write_theme_css', { extensionId: 'theme-editor', css });
+    await invoke('get_theme_css', { extensionId: 'theme-editor' });
+    // Aktiviere als aktuelles Theme
+    const blob = new Blob([css], { type: 'text/css' });
+    const url = URL.createObjectURL(blob);
+    let styleEl = document.getElementById('stone-theme-css');
+    if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'stone-theme-css'; document.head.appendChild(styleEl); }
+    styleEl.textContent = css;
+    localStorage.setItem('stone-theme', 'theme-editor');
+    alert('Theme übernommen! Die Vorschau ist jetzt live.');
+  } catch(e) {
+    alert('Fehler: ' + e);
+  }
+}
+
+async function saveTheme() {
+  const name = prompt('Theme-Name:', themeName);
+  if (!name) return;
+  themeName = name;
+  const css = document.getElementById('css-output').value;
+
+  try {
+    await invoke('save_theme_file', { name, css });
+    alert(`Theme "${name}" gespeichert!\n\nDatei: ~/Library/Application Support/stone-dashboard/themes/${name}.css\n\nLade sie als GitHub Release hoch oder teile sie manuell.`);
+  } catch(e) {
+    // Fallback: Download als Datei
+    const blob = new Blob([css], { type: 'text/css' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name}.css`;
+    a.click();
+  }
+}
+
+// ─── Tauri Bridge ──────────────────────────────────────────────────────
+let _id=0; const _p={};
+window.addEventListener('message',e=>{if(e.data?.id&&_p[e.data.id]){if(e.data.ok)_p[e.data.id].resolve(e.data.result);else _p[e.data.id].reject(new Error(e.data.error));delete _p[e.data.id]}});
+function invoke(cmd,args){return new Promise((resolve,reject)=>{const id=++_id;_p[id]={resolve,reject};window.parent.postMessage({type:'tauri-invoke',id,cmd,args},'*')})}
+
+buildUI();
+toggleAll(true);
+</script>
+</body>
+</html>

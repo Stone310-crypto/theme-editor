@@ -47,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f1117;
   <div id="panel-component" style="display:none">
     <div style="margin-bottom:6px;font-size:11px;color:#b8b4ae">CSS für <strong id="comp-name">—</strong></div>
     <textarea class="css-editor" id="comp-css" placeholder="/* Custom CSS für diese Komponente */" oninput="updateCompCSS()"></textarea>
-    <div style="margin-top:6px;font-size:10px;color:#6e6b65">Klassen: <code style="color:#d4a853">.card</code> <code style="color:#d4a853">.btn-preview</code> <code style="color:#d4a853">.nav</code> <code style="color:#d4a853">.wallet-row</code></div>
+    <div style="margin-top:6px;font-size:10px;color:#6e6b65">Echte Dashboard-Selektoren: <code style="color:#d4a853">div[style*="var(--bg-panel)"]</code> <code style="color:#d4a853">button</code> <code style="color:#d4a853">.flex</code> <code style="color:#d4a853">input</code><br>Die Vorschau-Klassen (.card etc.) sind NUR für die Vorschau.<br>Fürs echte Dashboard: CSS-Variablen oben ändern → wirkt global.</div>
     <div style="margin-top:6px"><label style="font-size:10px;color:#b8b4ae;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="layout-grid" onchange="updatePreview()"> Grid-Layout</label></div>
   </div>
   <details style="margin-top:10px"><summary style="font-size:11px;color:#b8b4ae;cursor:pointer">📝 Generiertes CSS</summary><textarea class="css-editor" id="css-output" readonly style="margin-top:4px;min-height:100px"></textarea></details>
